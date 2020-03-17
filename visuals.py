@@ -5,27 +5,49 @@ import matplotlib.patches as patches
 from scipy.ndimage import gaussian_filter
 
 
-def plot_results(results : dict, 
-                 figsize : tuple = (8, 6),
-                 fontsize : float = 14) -> None:
+def plot_sick_ratio(results : dict, 
+                    figsize : tuple = (8, 4),
+                    fontsize : float = 14) -> None:
     """
-    Plots simulation results. 
+    Plots sick ratios. 
     """
-
     plt.figure(figsize=figsize)
     for key, values in results.items():
         timesteps = np.array(values['x']) / 24
         plt.plot(timesteps, 
-                 gaussian_filter(values['y'], sigma=24),
+                 gaussian_filter(values['sick_ratio'], sigma=24),
                  label=values['label'])
     
     plt.legend(fontsize=fontsize)
     plt.xticks(fontsize=fontsize)
     plt.yticks(fontsize=fontsize)
+    plt.title('Ratio of population sick', fontsize=fontsize)
     plt.xlabel('Days from start', fontsize=fontsize)
-    plt.ylabel('Ratio of all persons sick', fontsize=fontsize)
+    plt.ylabel('Ratio of all persons', fontsize=fontsize)
     plt.show()
-
+    
+    
+def plot_cumul_inf_ratio(results : dict, 
+                         figsize : tuple = (8, 4),
+                         fontsize : float = 14) -> None:
+    """
+    Plots cumulative infection ratios. 
+    """
+    plt.figure(figsize=figsize)
+    for key, values in results.items():
+        timesteps = np.array(values['x']) / 24
+        plt.plot(timesteps, 
+                 gaussian_filter(values['cumul_new_inf'], sigma=24),
+                 label=values['label'])
+    
+    plt.legend(fontsize=fontsize)
+    plt.xticks(fontsize=fontsize)
+    plt.yticks(fontsize=fontsize)
+    plt.title('Cumulative ratio of population infected', fontsize=fontsize)
+    plt.xlabel('Days from start', fontsize=fontsize)
+    plt.ylabel('Ratio of all persons', fontsize=fontsize)
+    plt.show()
+    
 
 def render(persons : list, 
            events : list, 

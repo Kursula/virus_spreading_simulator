@@ -29,12 +29,15 @@ class Virus:
     
 def spread_virus(sneeze_output : list,
                  sneeze_loc : list,
+                 sneezing_person : any,
                  event : any, 
                  sim_time : float) -> None: 
     
     for virus in sneeze_output: 
         safe_dist = virus.get_safe_dist()
         
+        # Calculate distance from sneezing location to every person 
+        # in the same building.
         person_locs = []
         names = []
         for name, person in event.persons.items(): 
@@ -46,7 +49,10 @@ def spread_virus(sneeze_output : list,
         distances = np.linalg.norm(person_locs - np.array(sneeze_loc), axis=1)
         infected = distances <= safe_dist
         
-        for idx, inf in enumerate(infected):
-            if inf: 
-                event.persons[names[idx]].infect(virus=virus, 
-                                                 timestamp=sim_time)
+        for idx, infection_available in enumerate(infected):
+            if infection_available: 
+                result = event.persons[names[idx]]\
+                         .infect(virus=virus, timestamp=sim_time)
+                if result: 
+                    sneezing_person.infected_others(virus_name=virus.name,
+                                                    timestamp=sim_time)

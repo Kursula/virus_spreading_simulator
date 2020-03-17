@@ -18,7 +18,7 @@ class Person:
             'prev_update_time' : 0, 
             'current_event' : None,
             'sneeze_per_h' : 0,
-            'sneezed' : False
+            'sneezed' : False, 
         }
         
         # Disease states and history
@@ -50,6 +50,9 @@ class Person:
     
     
     def get_color(self) -> str: 
+        """
+        Marker color for map rendering.
+        """
         color = 'green'
         for virus in self.virus_status.values():
             if virus['contagious']:
@@ -60,30 +63,56 @@ class Person:
     
     
     def get_radius(self) -> float:
+        """
+        Marker radius for map rendering.
+        """
         if self.state['sneezed']: 
             return 50
         else:
             return 10
 
+        
     def enable_sick_leave(self) -> None: 
+        """
+        Enable the person to stay at home when sick
+        """
         self.state['sick_stay_home'] = True
         
     
     def vaccinate(self, virus_name : str) -> None: 
+        """
+        Make the person immune against the virus
+        """
         self.state['vaccinated'].append(virus_name)
         
         
     def get_vaccination_status(self) -> list:
+        """
+        Returns list of all virus names that the person 
+        has been vaccinated. 
+        """
         return self.state['vaccinated']
+        
+        
+    def infected_others(self, 
+                        virus_name : str,
+                        timestamp : float) -> None: 
+        """
+        Store timestamp when this person infected someone else. 
+        """
+        self.virus_status[virus_name]['infected_others_ts'].append(timestamp)
         
         
     def infect(self, 
                virus : Virus, 
-               timestamp : float) -> None:
-        
+               timestamp : float) -> bool:
+        """
+        Infect the person with the virus. 
+        Returns True when the person gets the infection. 
+        """
         # Check if person is vaccinated against this virus
         if virus.name in self.state['vaccinated']:
-            return None
+            return False
         
         # Check if this is new infection 
         if virus.name not in self.virus_status.keys():
@@ -93,15 +122,24 @@ class Person:
                 'contagious' : False,
                 'resistant' : False,
                 'healed' : False,
-                'start_time' : timestamp
+                'start_time' : timestamp,
+                'infected_others_ts' : []
             }
+            return True
         
         # Check if the person is resistant to this virus
         elif self.virus_status[virus.name]['resistant'] == True: 
-            return 
+            return False
+        else: 
+            # Currently nothing here
+            return False
         
         
     def sneeze(self): 
+        """
+        Make the person sneeze. The sneeze output will contain 
+        all viruses that are currently contagious.
+        """
         output = []
         self.state['sneezed'] = True
         for virus in self.virus_status.values():
@@ -112,7 +150,10 @@ class Person:
                 
     def update(self, 
                sim_time : float) -> dict: 
-        
+        """
+        Update the person status, location, infection 
+        state machine, etc. 
+        """
         results = {
             'sick' : False,
             'sneezed' : False,
@@ -142,7 +183,8 @@ class Person:
         results['event'] = self.state['current_event']
         results['loc'] = self.state['loc']
         
-        # Update infection state machine
+        # Update infection state machine and clear some previous 
+        # state values
         self.state['sneeze_per_h'] = 0
         self.state['sick'] = False 
         for virus in self.virus_status.values():
@@ -167,7 +209,8 @@ class Person:
             if inf_time >= virus['virus'].t_heal: 
                 virus['infected'] = False 
                 virus['resistant'] = True 
-        
+                virus['healed'] = True 
+
             # Check if virus is lethal 
             # TODO 
         

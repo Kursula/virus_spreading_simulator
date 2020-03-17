@@ -13,6 +13,7 @@ def run_sim(persons : list,
         
     timesteps = []
     sick_count = []
+    
     sim_time = 0 
     n_person = len(persons)
     while sim_time < sim_hours: 
@@ -22,20 +23,24 @@ def run_sim(persons : list,
 
         # Update persons
         for person in persons:
+            # Update status and spread virus
             result = person.update(sim_time=sim_time)
             if result['sneezed']: 
                 spread_virus(sneeze_output=result['sneeze_output'],
                              sneeze_loc=result['loc'],
+                             sneezing_person=person,
                              event=result['event'],
                              sim_time=sim_time)
 
+            # Process and store data for result analysis
             if result['sick']:
                 n_sick += 1
-
+                
+        # Plot map layout and persons 
         if plot_map:
-                render(persons=persons, 
-                       events=events, 
-                       sim_time=sim_time)
+            render(persons=persons, 
+                   events=events, 
+                   sim_time=sim_time)
 
         # Store aggregates for later analysis
         timesteps.append(sim_time)
@@ -45,3 +50,5 @@ def run_sim(persons : list,
         sim_time += t_step
 
     return timesteps, sick_count
+
+
