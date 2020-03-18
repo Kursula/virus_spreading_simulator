@@ -17,9 +17,13 @@ def run_sim(persons : list,
     sim_time = 0 
     n_person = len(persons)
     while sim_time < sim_hours: 
-
-        # Sick count at each timestemp
+        # Initialize result params for each timestep
         n_sick = 0 
+
+        # Run any updates in the event (home, work, etc) states, such 
+        # as shuffle the person locations. 
+        for event in events: 
+            event.update(sim_time=sim_time)
 
         # Update persons
         for person in persons:
