@@ -1,6 +1,20 @@
 import numpy as np
 
+
 class AbstractEvent: 
+    """
+    Base class for all event and location types like homes and schools. 
+    
+    The most critical parameter to set is the size, which defines the event place 
+    dimensions in meters. The persons within the event will be randomly located
+    inside that space. 
+    
+    The parameter loc_shuffle_interval [hours] tells that how often the persons in this 
+    event will change their locations. 
+    
+    Location parameters are only used when rendering the simulation scenario. From 
+    the simulation functionality point of view those play no role. 
+    """
     def __init__(self):
         self.name = None
         self.event_type = None
@@ -69,8 +83,8 @@ class AbstractEvent:
 class Home(AbstractEvent):
     def __init__(self,                  
                  name : str, 
-                 loc : list, 
                  size : list, 
+                 loc : list = [0, 0], 
                  loc_shuffle_interval : float = 3.0): 
         super().__init__()
         self.loc_shuffle_interval = loc_shuffle_interval
@@ -83,8 +97,8 @@ class Home(AbstractEvent):
 class Work(AbstractEvent):
     def __init__(self,                  
                  name : str, 
-                 loc : list, 
                  size : list, 
+                 loc : list = [0, 0], 
                  loc_shuffle_interval : float = 3.0): 
         super().__init__()
         self.loc_shuffle_interval = loc_shuffle_interval
@@ -97,8 +111,8 @@ class Work(AbstractEvent):
 class School(AbstractEvent):
     def __init__(self,                  
                  name : str, 
-                 loc : list, 
                  size : list, 
+                 loc : list = [0, 0], 
                  loc_shuffle_interval : float = 1.0): 
         super().__init__()
         self.loc_shuffle_interval = loc_shuffle_interval
@@ -111,8 +125,8 @@ class School(AbstractEvent):
 class Shop(AbstractEvent):
     def __init__(self,                  
                  name : str, 
-                 loc : list, 
                  size : list, 
+                 loc : list = [0, 0], 
                  loc_shuffle_interval : float = 0.5): 
         super().__init__()
         self.loc_shuffle_interval = loc_shuffle_interval

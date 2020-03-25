@@ -1,11 +1,10 @@
 from virus import spread_virus
-from visuals import render
 
 def run_sim(persons : list, 
             events : list,
             t_step : float = 1, 
             sim_hours : float = 1500, 
-            plot_map : bool = False, 
+            render_function : any = None, 
            ) -> tuple:
     """
     This function executes the simulation process. 
@@ -41,10 +40,12 @@ def run_sim(persons : list,
                 n_sick += 1
                 
         # Plot map layout and persons 
-        if plot_map:
-            render(persons=persons, 
-                   events=events, 
-                   sim_time=sim_time)
+        if render_function is not None:
+            render_function(
+                persons=persons, 
+                events=events, 
+                sim_time=sim_time
+            )
 
         # Store aggregates for later analysis
         timesteps.append(sim_time)
