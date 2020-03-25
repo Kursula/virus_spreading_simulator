@@ -12,6 +12,9 @@ class AbstractEvent:
 
         
     def get_in(self, person) -> None:
+        """
+        Get person in to this event.
+        """
         self.persons[person.name] = person
         
         # Set location within the event space
@@ -20,23 +23,36 @@ class AbstractEvent:
         person.set_loc([x, y])
         
     
+    def get_out(self, person):
+        """
+        Get person out of this event.
+        """
+        self.persons.pop(person.name)
+
+        
     def shuffle_locs(self) -> None:
+        """
+        Shuffle the person locations within the event. Shuffling will 
+        increase the social contacts and increases virus spreading. 
+        """
         for person in self.persons.values(): 
             # Set new location within the event space
             x = self.loc[0] + np.random.rand() * self.size[0]
             y = self.loc[1] + np.random.rand() * self.size[1]
             person.set_loc([x, y])
-        
-        
-    def get_out(self, person):
-        self.persons.pop(person.name)
-        
+                
         
     def get_loc(self) -> list: 
+        """
+        Returns event location for visualisation etc. purposes. 
+        """
         return self.loc 
     
     
     def get_size(self) -> list:
+        """
+        Returns event (building) size in meters.
+        """
         return self.size
         
         
@@ -78,4 +94,32 @@ class Work(AbstractEvent):
         self.size = size
 
 
+class School(AbstractEvent):
+    def __init__(self,                  
+                 name : str, 
+                 loc : list, 
+                 size : list, 
+                 loc_shuffle_interval : float = 1.0): 
+        super().__init__()
+        self.loc_shuffle_interval = loc_shuffle_interval
+        self.event_type = 'SCHOOL'
+        self.name = name
+        self.loc = loc
+        self.size = size
         
+
+class Shop(AbstractEvent):
+    def __init__(self,                  
+                 name : str, 
+                 loc : list, 
+                 size : list, 
+                 loc_shuffle_interval : float = 0.5): 
+        super().__init__()
+        self.loc_shuffle_interval = loc_shuffle_interval
+        self.event_type = 'SHOP'
+        self.name = name
+        self.loc = loc
+        self.size = size
+
+
+
