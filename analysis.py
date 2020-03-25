@@ -11,7 +11,7 @@ def cumul_inf_ratio(persons : list,
     virus existing. 
     """
     
-    ts_to_idx =  {ts : idx for ts, idx in enumerate(timestamps)}    
+    ts_to_idx =  {ts : idx for idx, ts in enumerate(timestamps)}    
     cuminf = [0 for x in range(len(timestamps))]
     for person in persons:
         for vir_data in person.virus_status.values():

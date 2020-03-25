@@ -60,7 +60,7 @@ def render(persons : list,
     
     Note that the rendeing is slow with large setups. 
     """
-    event_name_offset = np.array([0, -13])
+    event_name_offset = np.array([0, -5])
     
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111, aspect='equal')
@@ -76,13 +76,10 @@ def render(persons : list,
                                  edgecolor='black',
                                  facecolor='none')
         ax.add_patch(rect)
-    
         # Plot event name
-        if event.event_type != 'HOME':
-            plt.annotate(xy=loc + event_name_offset, 
-                         s=event.name)
+        plt.annotate(xy=loc + event_name_offset, 
+                     s=event.name)
 
-    
     # Plot persons 
     for person in persons: 
         # Color code the sick status 

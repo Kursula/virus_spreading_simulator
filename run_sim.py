@@ -1,5 +1,5 @@
 from virus import spread_virus
-
+from visuals import render
 
 def run_sim(persons : list, 
             events : list,
