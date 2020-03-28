@@ -16,7 +16,7 @@ class Virus:
         # Time to heal [hours] calculated from start of infection
         self.t_heal = t_heal 
         
-        # Distance from sneezing person that still infects
+        # Distance [meters] from sneezing person that still infects
         self.sneeze_dist = sneeze_dist
         
         # Sneezing probability density [sneezing count / hour]
@@ -27,32 +27,38 @@ class Virus:
         return self.sneeze_dist
     
     
-def spread_virus(sneeze_output : list,
+def spread_virus(virus : any,
                  sneeze_loc : list,
                  sneezing_person : any,
                  event : any, 
                  sim_time : float) -> None: 
+    """
+    This is run when a sick person sneezes and spreads the virus. 
+    Anyone close than the virus sneeze_dist will get infection unless
+    they are vaccinated or resistant against the virus. 
+    Only the persons in the same event can get the infection. 
+    """
+    safe_dist = virus.get_safe_dist()
     
-    for virus in sneeze_output: 
-        safe_dist = virus.get_safe_dist()
-        
-        # Calculate distance from sneezing location to every person 
-        # in the same building.
-        person_locs = []
-        names = []
-        for name, person in event.persons.items(): 
-            person_locs.append(person.get_loc())
-            names.append(name)
+    # Calculate distance from sneezing location to every person 
+    # in the same event.
+    person_locs = []
+    names = []
+    for name, person in event.persons.items(): 
+        person_locs.append(person.get_loc())
+        names.append(name)
             
-        names = np.array(names)
-        person_locs = np.array(person_locs)
-        distances = np.linalg.norm(person_locs - np.array(sneeze_loc), axis=1)
-        infected = distances <= safe_dist
+    names = np.array(names)
+    person_locs = np.array(person_locs)
+    distances = np.linalg.norm(person_locs - np.array(sneeze_loc), axis=1)
+    infected = distances < safe_dist
+    infected_persons = names[infected]
+    for person_name in infected_persons:
+        # Infect the person who was too close to sneezing person
+        inf_result = event.persons[person_name]\
+            .infect(virus=virus, timestamp=sim_time)
         
-        for idx, infection_available in enumerate(infected):
-            if infection_available: 
-                result = event.persons[names[idx]]\
-                         .infect(virus=virus, timestamp=sim_time)
-                if result: 
-                    sneezing_person.infected_others(virus_name=virus.name,
-                                                    timestamp=sim_time)
+        # If sneezing caused infection, store the timestamp to the sneezing 
+        # person data
+        if inf_result: 
+            sneezing_person.infected_others(timestamp=sim_time)

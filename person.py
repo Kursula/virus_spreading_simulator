@@ -9,22 +9,26 @@ class Person:
         self.name = name
         
         self.state = {
+            # General params
             'loc' : [0., 0.],
             'age' : age,
-            'vaccinated' : [],
-            'sick_stay_home' : False,
-            'alive' : True,
-            'sick' : False,
+            'sick_leave_allowed' : False,
             'prev_update_time' : 0, 
             'current_event' : None,
+            
+            # Disease params
+            'vaccinated' : False,
+            'resistant' : False,
+            'virus' : None,
+            'sick' : False,
+            'sick_start_time' : None,
+            'contagious' : False,
             'sneeze_per_h' : 0,
             'sneezed' : False, 
+            'infected_others_ts' : [],
         }
-        
-        # Disease states and history
-        self.virus_status = {}
-        
-        # Life events
+                
+        # Calendar events
         self.schedule = {}
         
         
@@ -32,6 +36,7 @@ class Person:
                   event_hours : list,
                   event : any) -> None: 
         """
+        Add new event to the person's calendar. 
         Event are set for full calendar hours. 
         """
         for hour in event_hours:
@@ -53,12 +58,12 @@ class Person:
         """
         Marker color for map rendering.
         """
-        color = 'green'
-        for virus in self.virus_status.values():
-            if virus['contagious']:
-                return 'red'
-            if virus['infected']:
-                color = 'gold'
+        if self.state['contagious']:
+            color = 'red'
+        elif self.state['sick']:
+            color = 'gold'
+        else:
+            color = 'green'
         return color
     
     
@@ -76,31 +81,29 @@ class Person:
         """
         Enable the person to stay at home when sick
         """
-        self.state['sick_stay_home'] = True
+        self.state['sick_leave_allowed'] = True
         
     
-    def vaccinate(self, virus_name : str) -> None: 
+    def vaccinate(self) -> None: 
         """
         Make the person immune against the virus
         """
-        self.state['vaccinated'].append(virus_name)
+        self.state['vaccinated'] = True
         
         
     def get_vaccination_status(self) -> list:
         """
-        Returns list of all virus names that the person 
-        has been vaccinated. 
+        Returns vaccination status
         """
         return self.state['vaccinated']
         
         
     def infected_others(self, 
-                        virus_name : str,
                         timestamp : float) -> None: 
         """
         Store timestamp when this person infected someone else. 
         """
-        self.virus_status[virus_name]['infected_others_ts'].append(timestamp)
+        self.state['infected_others_ts'].append(timestamp)
         
         
     def infect(self, 
@@ -110,118 +113,93 @@ class Person:
         Infect the person with the virus. 
         Returns True when the person gets the infection. 
         """
-        # Check if person is vaccinated against this virus
-        if virus.name in self.state['vaccinated']:
+        # Check if person is vaccinated
+        if self.state['vaccinated']:
             return False
         
-        # Check if this is new infection 
-        if virus.name not in self.virus_status.keys():
-            self.virus_status[virus.name] = {
-                'virus' : virus,
-                'infected' : True, 
-                'contagious' : False,
-                'resistant' : False,
-                'healed' : False,
-                'start_time' : timestamp,
-                'infected_others_ts' : []
-            }
-            return True
-        
-        # Check if the person is resistant to this virus
-        elif self.virus_status[virus.name]['resistant'] == True: 
-            return False
-        else: 
-            # Currently nothing here
+        # Check if person is resistant due to immunity obtained 
+        # from earlier disease
+        if self.state['resistant']:
             return False
         
+        # Check if the person was already sick
+        if self.state['sick']:
+            return False
         
-    def sneeze(self): 
-        """
-        Make the person sneeze. The sneeze output will contain 
-        all viruses that are currently contagious.
-        """
-        output = []
-        self.state['sneezed'] = True
-        for virus in self.virus_status.values():
-            if virus['contagious']: 
-                output.append(virus['virus'])    
-        return output
+        # Make the person sick
+        self.state['sick'] = True
+        self.state['virus'] = virus
+        self.state['sick_start_time'] = timestamp
+        return True
     
+    
+    def initial_setup(self):
+        # Set the initial event at beginning of simulation
+        new_event = self.schedule[0]            
+        new_event.get_in(self)
+        self.state['current_event'] = new_event        
+
                 
     def update(self, 
                sim_time : float) -> dict: 
         """
-        Update the person status, location, infection 
-        state machine, etc. 
+        Update the person status, location, infection state machine, etc. 
         """
-        results = {
-            'sick' : False,
-            'sneezed' : False,
-            'sneeze_output' : None
-        }
         self.state['sneezed'] = False
         
         # Go to the event listed in schedule
         sch_idx = int(sim_time % 24)
-        new_event = self.schedule[sch_idx]
+        new_event = self.schedule[sch_idx]                
         if new_event != self.state['current_event']:
-            
-            # Check if should stay home when sick
-            if self.state['sick']\
-                and self.state['sick_stay_home']\
-                and self.state['current_event'].event_type == 'HOME':
-                pass
-            else:
-                # Get out of the previous event
-                if self.state['current_event'] is not None: 
-                    self.state['current_event'].get_out(self)
-
-                # Get in to the new event
+            if not self.state['sick']:
+                self.state['current_event'].get_out(self)
                 new_event.get_in(self)
-                self.state['current_event'] = new_event
-            
-        results['event'] = self.state['current_event']
-        results['loc'] = self.state['loc']
+                self.state['current_event'] = new_event      
+            else: # Sick 
+                if self.state['sick_leave_allowed']\
+                    and self.state['current_event'].event_type == 'HOME':
+                    # Do nothing and stay at home.
+                    pass
+                else:
+                    self.state['current_event'].get_out(self)
+                    new_event.get_in(self)
+                    self.state['current_event'] = new_event        
         
-        # Update infection state machine and clear some previous 
+        # Update disease state machine and clear some previous 
         # state values
-        self.state['sneeze_per_h'] = 0
-        self.state['sick'] = False 
-        for virus in self.virus_status.values():
-            # Check sickness status
-            if virus['infected']: 
-                results['sick'] = True
-                self.state['sick'] = True 
-            else: 
-                continue
-                
-            inf_time = sim_time - virus['start_time']        
+        if self.state['sick']:
             # Check if virus is contagious
-            t_cont = virus['virus'].t_contagious
-            if t_cont[0] <= inf_time < t_cont[1]:
-                virus['contagious'] = True
-                self.state['sneeze_per_h'] = max(self.state['sneeze_per_h'], 
-                                                 virus['virus'].sneeze_per_h)
+            disease_duration = sim_time - self.state['sick_start_time']        
+            t_cont = self.state['virus'].t_contagious
+            if t_cont[0] <= disease_duration < t_cont[1]:
+                self.state['contagious'] = True
+                self.state['sneeze_per_h'] = self.state['virus'].sneeze_per_h
             else:
-                virus['contagious'] = False
+                self.state['contagious'] = False
+                self.state['sneeze_per_h'] = 0 
                 
-            # Check if the person has already healed
-            if inf_time >= virus['virus'].t_heal: 
-                virus['infected'] = False 
-                virus['resistant'] = True 
-                virus['healed'] = True 
+            # Check if the person has healed from the disease
+            if disease_duration >= self.state['virus'].t_heal: 
+                self.state['sick'] = False 
+                self.state['resistant'] = True 
 
-            # Check if virus is lethal 
-            # TODO 
+        results = {
+            'sick' : self.state['sick'],
+            'sneezed' : False,
+            'virus' : None,
+            'event' : self.state['current_event'],
+            'loc' : self.state['loc']
+        }
         
         # Check if there is need to sneeze 
-        t_delta = sim_time - self.state['prev_update_time']
-        p_sneeze = t_delta * self.state['sneeze_per_h']
-        if np.random.rand() < p_sneeze: 
-            sneeze_output = self.sneeze()
-            results['sneezed'] = True
-            results['sneeze_output'] = sneeze_output
-
+        if self.state['contagious']:
+            t_delta = sim_time - self.state['prev_update_time']
+            p_sneeze = t_delta * self.state['sneeze_per_h']
+            if np.random.rand() < p_sneeze: 
+                results['sneezed'] = True
+                results['virus'] = self.state['virus']
+                self.state['sneezed'] = True
+        
         # Store the update timestamp
         self.state['prev_update_time'] = sim_time
         

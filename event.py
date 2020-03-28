@@ -54,7 +54,7 @@ class AbstractEvent:
             x = self.loc[0] + np.random.rand() * self.size[0]
             y = self.loc[1] + np.random.rand() * self.size[1]
             person.set_loc([x, y])
-                
+                                
         
     def get_loc(self) -> list: 
         """
@@ -134,6 +134,3 @@ class Shop(AbstractEvent):
         self.name = name
         self.loc = loc
         self.size = size
-
-
-

@@ -1,20 +1,36 @@
-from virus import spread_virus
+from virus import Virus, spread_virus
+
 
 def run_sim(persons : list, 
             events : list,
-            t_step : float = 1, 
-            sim_hours : float = 1500, 
+            virus : Virus,
+            sim_hours : float, 
             render_function : any = None, 
            ) -> tuple:
     """
     This function executes the simulation process. 
-    """
-        
+    """        
     timesteps = []
     sick_count = []
-    
-    sim_time = 0 
     n_person = len(persons)
+
+    # Find the max timestemp that can be used without compromising results
+    temp = [ev.loc_shuffle_interval for ev in events]
+    t_step = min(temp)
+    # Person calendar events require min 1h stepping 
+    if t_step > 1: 
+        t_step = 1
+    # Check if virus params limit the timestep. 
+    # There can be max 1 sneeze during the t_step interval.
+    if t_step > 1 / virus.sneeze_per_h:
+        t_step = 1 / virus.sneeze_per_h
+                
+    # Initial setup
+    for person in persons: 
+        person.initial_setup()
+            
+    # Run simulation 
+    sim_time = 0 
     while sim_time < sim_hours: 
         # Initialize result params for each timestep
         n_sick = 0 
@@ -23,13 +39,13 @@ def run_sim(persons : list,
         # as shuffle the person locations. 
         for event in events: 
             event.update(sim_time=sim_time)
-
+        
         # Update persons
         for person in persons:
             # Update status and spread virus
             result = person.update(sim_time=sim_time)
             if result['sneezed']: 
-                spread_virus(sneeze_output=result['sneeze_output'],
+                spread_virus(virus=result['virus'],
                              sneeze_loc=result['loc'],
                              sneezing_person=person,
                              event=result['event'],
