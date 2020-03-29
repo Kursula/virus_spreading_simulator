@@ -3,6 +3,7 @@ import numpy as np
 class Virus: 
     def __init__(self,
                  name : str, 
+                 t_incubation : float,
                  t_contagious : list, 
                  t_heal : float,
                  sneeze_dist : float,
@@ -10,6 +11,9 @@ class Virus:
         # Identifier for the virus
         self.name = name
         
+        # Time from infection to start of the disease
+        self.t_incubation = t_incubation 
+
         # Time range where virus is contagious [start_hour, end_hour]
         self.t_contagious = t_contagious
         

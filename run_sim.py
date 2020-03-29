@@ -1,17 +1,19 @@
 from virus import Virus, spread_virus
+import numpy as np
+import sys
+import time
 
-
-def run_sim(persons : list, 
-            events : list,
-            virus : Virus,
-            sim_hours : float, 
-            render_function : any = None, 
-           ) -> tuple:
+def run_simulation(scenario : dict) -> dict:
     """
     This function executes the simulation process. 
     """        
+    t0 = time.time()
+    persons = scenario['persons']
+    events = scenario['events']
+    virus = scenario['virus']
+    sim_hours = scenario['sim_hours']
     timesteps = []
-    sick_count = []
+    sick_ratios = []
     n_person = len(persons)
 
     # Find the max timestemp that can be used without compromising results
@@ -20,8 +22,8 @@ def run_sim(persons : list,
     # Person calendar events require min 1h stepping 
     if t_step > 1: 
         t_step = 1
-    # Check if virus params limit the timestep. 
-    # There can be max 1 sneeze during the t_step interval.
+    # Check if virus params limit the timestep since
+    # there can be max one sneeze during the t_step interval.
     if t_step > 1 / virus.sneeze_per_h:
         t_step = 1 / virus.sneeze_per_h
                 
@@ -31,23 +33,24 @@ def run_sim(persons : list,
             
     # Run simulation 
     sim_time = 0 
-    while sim_time < sim_hours: 
+    while sim_time < sim_hours:
+
         # Initialize result params for each timestep
         n_sick = 0 
 
         # Run any updates in the event (home, work, etc) states, such 
         # as shuffle the person locations. 
-        for event in events: 
-            event.update(sim_time=sim_time)
+        for ev in events: 
+            ev.update(sim_time=sim_time)
         
         # Update persons
-        for person in persons:
+        for prs in persons:
             # Update status and spread virus
-            result = person.update(sim_time=sim_time)
+            result = prs.update(sim_time=sim_time)
             if result['sneezed']: 
                 spread_virus(virus=result['virus'],
                              sneeze_loc=result['loc'],
-                             sneezing_person=person,
+                             sneezing_person=prs,
                              event=result['event'],
                              sim_time=sim_time)
 
@@ -55,6 +58,7 @@ def run_sim(persons : list,
             if result['sick']:
                 n_sick += 1
                 
+        """
         # Plot map layout and persons 
         if render_function is not None:
             render_function(
@@ -62,14 +66,23 @@ def run_sim(persons : list,
                 events=events, 
                 sim_time=sim_time
             )
+        """
 
         # Store aggregates for later analysis
         timesteps.append(sim_time)
-        sick_count.append(n_sick / n_person)
+        sick_ratios.append(n_sick / n_person)
 
         # Increment time 
         sim_time += t_step
-
-    return timesteps, sick_count
+        
+    # Progress monitoring 
+    t1 = time.time()
+    print('Scenario {} done in {:0.1f} s.'.format(scenario['label'], t1 - t0))
+        
+    # Add results to the simulation scenario
+    scenario['timesteps'] = timesteps
+    scenario['sick_ratios'] = sick_ratios
+        
+    return scenario
 
 

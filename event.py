@@ -127,7 +127,7 @@ class Shop(AbstractEvent):
                  name : str, 
                  size : list, 
                  loc : list = [0, 0], 
-                 loc_shuffle_interval : float = 0.5): 
+                 loc_shuffle_interval : float = 1): 
         super().__init__()
         self.loc_shuffle_interval = loc_shuffle_interval
         self.event_type = 'SHOP'

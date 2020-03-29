@@ -20,6 +20,7 @@ class Person:
             'vaccinated' : False,
             'resistant' : False,
             'virus' : None,
+            'incubation' : False,
             'sick' : False,
             'sick_start_time' : None,
             'contagious' : False,
@@ -60,7 +61,7 @@ class Person:
         """
         if self.state['contagious']:
             color = 'red'
-        elif self.state['sick']:
+        elif self.state['sick'] or self.state['incubation']:
             color = 'gold'
         else:
             color = 'green'
@@ -122,12 +123,12 @@ class Person:
         if self.state['resistant']:
             return False
         
-        # Check if the person was already sick
-        if self.state['sick']:
+        # Check if the person is already sick
+        if self.state['sick'] or self.state['incubation']:
             return False
         
         # Make the person sick
-        self.state['sick'] = True
+        self.state['incubation'] = True
         self.state['virus'] = virus
         self.state['sick_start_time'] = timestamp
         return True
@@ -136,8 +137,8 @@ class Person:
     def initial_setup(self):
         # Set the initial event at beginning of simulation
         new_event = self.schedule[0]            
-        new_event.get_in(self)
         self.state['current_event'] = new_event        
+        self.state['current_event'].get_in(self)      
 
                 
     def update(self, 
@@ -151,25 +152,35 @@ class Person:
         sch_idx = int(sim_time % 24)
         new_event = self.schedule[sch_idx]                
         if new_event != self.state['current_event']:
-            if not self.state['sick']:
-                self.state['current_event'].get_out(self)
-                new_event.get_in(self)
-                self.state['current_event'] = new_event      
-            else: # Sick 
-                if self.state['sick_leave_allowed']\
-                    and self.state['current_event'].event_type == 'HOME':
-                    # Do nothing and stay at home.
-                    pass
-                else:
+            if self.state['sick']:
+                if self.state['sick_leave_allowed']:
+                    if self.state['current_event'].event_type == 'HOME':
+                        # Do nothing and stay at home.
+                        pass
+                    else: # Do the scheduled events until the person ends up home
+                        self.state['current_event'].get_out(self)
+                        self.state['current_event'] = new_event   
+                        self.state['current_event'].get_in(self)   
+                else: # No sick leaves. Go to all planned events.
                     self.state['current_event'].get_out(self)
-                    new_event.get_in(self)
-                    self.state['current_event'] = new_event        
-        
+                    self.state['current_event'] = new_event   
+                    self.state['current_event'].get_in(self)   
+            else: # Not sick. Go to all planned events.
+                self.state['current_event'].get_out(self)
+                self.state['current_event'] = new_event   
+                self.state['current_event'].get_in(self)   
+
         # Update disease state machine and clear some previous 
         # state values
-        if self.state['sick']:
+        if self.state['sick'] or self.state['incubation']:
+            disease_duration = sim_time - self.state['sick_start_time']  
+            
+            # Check if disease has passed the incubation period
+            if disease_duration > self.state['virus'].t_incubation: 
+                self.state['sick'] = True
+                self.state['incubation'] = False
+            
             # Check if virus is contagious
-            disease_duration = sim_time - self.state['sick_start_time']        
             t_cont = self.state['virus'].t_contagious
             if t_cont[0] <= disease_duration < t_cont[1]:
                 self.state['contagious'] = True
