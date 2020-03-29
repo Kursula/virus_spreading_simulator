@@ -4,7 +4,7 @@ This is simple simulator program for modeling the virus spreading using the actu
 
 The simulator models the persons and their common life events (life at home, work, studying at school, visiting shops) by simulating a typical day of life and repeating that day for the duration of the simulation. When a person is sick, the virus makes the person sneeze, which then transfers the virus to the nearby persons. The code is built to support sick leaves, vaccinations and other countermeasure options.
 
-!(./figures/Sample_plot.png)
+![](./figures/Sample_plot.png)
 
 
 
