@@ -1,88 +1,102 @@
-from virus import Virus, spread_virus
+from virus import Virus
+from person import Person
 import numpy as np
-import sys
 import time
+from analysis import Analysis
 
-def run_simulation(scenario : dict) -> dict:
+
+def run_simulation(scenario : dict, t_step : float = 1) -> dict:
     """
-    This function executes the simulation process. 
+    Runs the simulation process. 
     """        
     t0 = time.time()
-    persons = scenario['persons']
-    events = scenario['events']
-    virus = scenario['virus']
-    sim_hours = scenario['sim_hours']
-    timesteps = []
-    sick_ratios = []
-    n_person = len(persons)
-
-    # Find the max timestemp that can be used without compromising results
-    temp = [ev.loc_shuffle_interval for ev in events]
-    t_step = min(temp)
-    # Person calendar events require min 1h stepping 
-    if t_step > 1: 
-        t_step = 1
-    # Check if virus params limit the timestep since
-    # there can be max one sneeze during the t_step interval.
-    if t_step > 1 / virus.sneeze_per_h:
-        t_step = 1 / virus.sneeze_per_h
-                
+    
     # Initial setup
-    for person in persons: 
-        person.initial_setup()
-            
+    scenario['timesteps'] = []
+    scenario['debug'] = []
+    n_all = len(scenario['persons'])
+
+    # Divide persons to compartments
+    healthy = {}
+    sick = {}
+    healed = {}
+    for id_code, person in scenario['persons'].items(): 
+        if person.sick_now:
+            sick[id_code] = person
+        elif person.healed:
+            healed[id_code] = person
+        else:
+            healthy[id_code] = person
+
+    # Initialize callback status
+    for cb in scenario['callbacks']: 
+        cb['done'] = False
+
     # Run simulation 
-    sim_time = 0 
-    while sim_time < sim_hours:
-
-        # Initialize result params for each timestep
-        n_sick = 0 
-
-        # Run any updates in the event (home, work, etc) states, such 
-        # as shuffle the person locations. 
-        for ev in events: 
-            ev.update(sim_time=sim_time)
-        
+    sim_time = 0
+    healthy_idx = 0
+    while sim_time < scenario['sim_hours']:
+        n_healthy = len(healthy)
+        healthy_list = list(healthy.values())
+    
         # Update persons
-        for prs in persons:
-            # Update status and spread virus
-            result = prs.update(sim_time=sim_time)
-            if result['sneezed']: 
-                spread_virus(virus=result['virus'],
-                             sneeze_loc=result['loc'],
-                             sneezing_person=prs,
-                             event=result['event'],
-                             sim_time=sim_time)
-
-            # Process and store data for result analysis
-            if result['sick']:
-                n_sick += 1
+        to_healed = []
+        to_sick = []
+        for id_code, person in sick.items():
+            person.update_infection(sim_time)            
+            if person.healed: 
+                to_healed.append(id_code)
+                continue 
                 
-        """
-        # Plot map layout and persons 
-        if render_function is not None:
-            render_function(
-                persons=persons, 
-                events=events, 
-                sim_time=sim_time
-            )
-        """
+            if person.expose_others:
+                if n_healthy == 0: 
+                    continue
 
-        # Store aggregates for later analysis
-        timesteps.append(sim_time)
-        sick_ratios.append(n_sick / n_person)
-
-        # Increment time 
+                # Calculate number of healthy persons to expose
+                n = person.n_exposed
+                n *= float(n_healthy) / float(n_all)
+                frac = n - int(n)
+                n = int(n)
+                if np.random.rand() < frac: 
+                    n += 1
+                    
+                # Expose persons
+                for _ in range(n): 
+                    healthy_idx += 1
+                    if healthy_idx >= n_healthy: 
+                        healthy_idx = 0
+                    exp_person = healthy_list[healthy_idx]    
+                    new_infection = exp_person.expose(
+                        infected_by=person.id_code, 
+                        virus=scenario['virus'], 
+                        timestamp=sim_time
+                    )
+                    # If exposure caused infection, store the contact information
+                    if new_infection: 
+                        person.report_infected_others(id_code=exp_person.id_code)
+                        to_sick.append(exp_person.id_code)
+                
+        for id_code in to_healed: 
+            healed[id_code] = sick.pop(id_code)
+                
+        for id_code in to_sick: 
+            sick[id_code] = healthy.pop(id_code)
+        
+        scenario['timesteps'].append(sim_time)
         sim_time += t_step
+        
+        # Run timed callbacks
+        for cb in scenario['callbacks']: 
+            if (cb['trigger'] < sim_time) and (cb['done'] == False): 
+                cb['function'](scenario)
+                cb['done'] = True
+        
+    # Analyze the data
+    analysis = Analysis()
+    scenario = analysis.run_analysis(scenario)
         
     # Progress monitoring 
     t1 = time.time()
     print('Scenario {} done in {:0.1f} s.'.format(scenario['label'], t1 - t0))
-        
-    # Add results to the simulation scenario
-    scenario['timesteps'] = timesteps
-    scenario['sick_ratios'] = sick_ratios
-        
+
     return scenario
-
-
